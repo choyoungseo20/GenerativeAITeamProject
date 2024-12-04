@@ -19,6 +19,14 @@ fast_api_base = "http://localhost:8000/"
 
 prompt_rag = "Please provide the major issues of 2024. It would be great if you could combine the information I provide with your own knowledge."
 
+logical_prompt = (
+    "Please answer in a clear and structured way. "
+    "Provide detailed explanations where necessary, include examples if applicable, "
+    "and make sure each point is logically connected. "
+    "Avoid ambiguity and focus on making your answer easy to understand."
+)
+
+
 flag = 0
 
 def main():
@@ -78,6 +86,7 @@ def main():
     def run_inference(question, chat_history=None, image_path=None):
         messages = []
 
+        global flag
         # 이전 채팅 기록이 있는 경우 메시지 구성
         if chat_history:
             for msg in chat_history:
@@ -92,6 +101,7 @@ def main():
                             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
                         ],
                     })
+                    flag = 0
                 else:
                     # 텍스트 메시지인 경우 그대로 추가
                     messages.append({
@@ -206,12 +216,8 @@ def main():
         question = message.get("text") if isinstance(message, dict) else message
 
         # 사용자가 메시지를 입력했을 경우, 추가적인 프롬프트를 추가 (화면에는 나타나지 않게 처리)
-        combined_question = question
-        #if question:
-        #   additional_prompt = random.choice(prompts)
-            # 질문과 추가 프롬프트를 결합 (실제 모델에 전달할 때만 사용)
-        #  combined_question += f" {additional_prompt}"
-
+        combined_question = logical_prompt + " " + question
+        
         # 인퍼런스 실행 (결합된 질문으로 실행)
         bot_message = run_inference(combined_question, chat_history, image_path)
 
@@ -219,7 +225,7 @@ def main():
         if question:
             chat_history.append({"role": "user", "content": question})
 
-        if image_path:
+        if image_path != None:
             flag = 1
             chat_history.append({"role": "user", "content": {"path": image_path}})
 
@@ -229,10 +235,6 @@ def main():
         print('히스토리 내역', chat_history)
         
         return "", chat_history
-
-    def clear_chat():
-        return "", []
-
 
     with gr.Blocks(css=""" 
     #chatbot .message {
@@ -287,9 +289,7 @@ def main():
             placeholder="Enter message or upload file...",
             show_label=False,
         )
-        clear_button = gr.Button("사진은 한 번에 하나만 올릴 수 있습니다. 사진을 추가로 업로드하고 싶다면 Clear하세요!", elem_classes="btn-primary")
-
-        clear_button.click(fn=clear_chat, inputs=[], outputs=[msg, chatbot])
+        clear = gr.ClearButton([msg, chatbot])
         msg.submit(respond, [msg, chatbot], [msg, chatbot])
 
 
